@@ -2,7 +2,7 @@
   {
     "id": 1,
     "name": "Silk Blouse",
-    "price": 68,
+    "price": 16,
     "category": "tops",
     "color": "white",
     "season": "spring",
@@ -12,7 +12,7 @@
   {
     "id": 2,
     "name": "Cashmere Sweater",
-    "price": 120,
+    "price": 28,
     "category": "tops",
     "color": "beige",
     "season": "winter",
@@ -22,7 +22,7 @@
   {
     "id": 3,
     "name": "Linen Camp Shirt",
-    "price": 55,
+    "price": 13,
     "category": "tops",
     "color": "blue",
     "season": "summer",
@@ -32,7 +32,7 @@
   {
     "id": 4,
     "name": "Graphic Tee",
-    "price": 35,
+    "price": 12,
     "category": "tops",
     "color": "black",
     "season": "all-season",
@@ -42,7 +42,7 @@
   {
     "id": 5,
     "name": "Slim Chinos",
-    "price": 75,
+    "price": 18,
     "category": "bottoms",
     "color": "beige",
     "season": "spring",
@@ -52,7 +52,7 @@
   {
     "id": 6,
     "name": "Selvedge Denim",
-    "price": 90,
+    "price": 22,
     "category": "bottoms",
     "color": "blue",
     "season": "all-season",
@@ -62,7 +62,7 @@
   {
     "id": 7,
     "name": "Pleated Trousers",
-    "price": 85,
+    "price": 21,
     "category": "bottoms",
     "color": "black",
     "season": "fall",
@@ -72,7 +72,7 @@
   {
     "id": 8,
     "name": "Cargo Pants",
-    "price": 65,
+    "price": 15,
     "category": "bottoms",
     "color": "green",
     "season": "all-season",
@@ -82,7 +82,7 @@
   {
     "id": 9,
     "name": "Leather Sneakers",
-    "price": 130,
+    "price": 31,
     "category": "shoes",
     "color": "white",
     "season": "all-season",
@@ -92,7 +92,7 @@
   {
     "id": 10,
     "name": "Chelsea Boots",
-    "price": 160,
+    "price": 36,
     "category": "shoes",
     "color": "brown",
     "season": "fall",
@@ -102,7 +102,7 @@
   {
     "id": 11,
     "name": "Canvas Loafers",
-    "price": 70,
+    "price": 17,
     "category": "shoes",
     "color": "beige",
     "season": "summer",
@@ -112,7 +112,7 @@
   {
     "id": 12,
     "name": "Running Shoes",
-    "price": 110,
+    "price": 26,
     "category": "shoes",
     "color": "black",
     "season": "all-season",
@@ -122,7 +122,7 @@
   {
     "id": 13,
     "name": "Wool Overcoat",
-    "price": 220,
+    "price": 35,
     "category": "outerwear",
     "color": "black",
     "season": "winter",
@@ -132,7 +132,7 @@
   {
     "id": 14,
     "name": "Bomber Jacket",
-    "price": 145,
+    "price": 34,
     "category": "outerwear",
     "color": "green",
     "season": "fall",
@@ -142,7 +142,7 @@
   {
     "id": 15,
     "name": "Denim Jacket",
-    "price": 95,
+    "price": 23,
     "category": "outerwear",
     "color": "blue",
     "season": "spring",
@@ -152,7 +152,7 @@
   {
     "id": 16,
     "name": "Rain Parka",
-    "price": 175,
+    "price": 33,
     "category": "outerwear",
     "color": "black",
     "season": "spring",
@@ -162,7 +162,7 @@
   {
     "id": 17,
     "name": "Leather Tote",
-    "price": 140,
+    "price": 33,
     "category": "bags",
     "color": "brown",
     "season": "all-season",
@@ -172,7 +172,7 @@
   {
     "id": 18,
     "name": "Canvas Backpack",
-    "price": 85,
+    "price": 20,
     "category": "bags",
     "color": "green",
     "season": "all-season",
@@ -182,7 +182,7 @@
   {
     "id": 19,
     "name": "Crossbody Bag",
-    "price": 60,
+    "price": 14,
     "category": "bags",
     "color": "black",
     "season": "all-season",
@@ -192,7 +192,7 @@
   {
     "id": 20,
     "name": "Weekend Duffle",
-    "price": 115,
+    "price": 27,
     "category": "bags",
     "color": "beige",
     "season": "all-season",
@@ -202,7 +202,7 @@
   {
     "id": 21,
     "name": "Silk Scarf",
-    "price": 45,
+    "price": 11,
     "category": "accessories",
     "color": "red",
     "season": "spring",
@@ -212,7 +212,7 @@
   {
     "id": 22,
     "name": "Leather Belt",
-    "price": 55,
+    "price": 13,
     "category": "accessories",
     "color": "brown",
     "season": "all-season",
@@ -222,7 +222,7 @@
   {
     "id": 23,
     "name": "Aviator Sunglasses",
-    "price": 95,
+    "price": 23,
     "category": "accessories",
     "color": "black",
     "season": "summer",
@@ -232,7 +232,7 @@
   {
     "id": 24,
     "name": "Merino Beanie",
-    "price": 30,
+    "price": 12,
     "category": "accessories",
     "color": "red",
     "season": "winter",
