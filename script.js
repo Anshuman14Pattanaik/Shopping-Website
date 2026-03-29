@@ -1,6 +1,139 @@
 /* ============================================================
-   SHOPPING WEB — Application Logic (Complete & Corrected)
+   SHOPPING WEB — Application Logic (Backend Integrated)
 ============================================================ */
+
+// ── API Configuration ──────────────────────────────────────
+const API_BASE = 'http://localhost:5000/api';
+let authToken = localStorage.getItem('token') || null;
+
+// API Helper Functions
+async function apiRequest(endpoint, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+      ...options.headers
+    },
+    ...options
+  };
+  
+  if (config.body && typeof config.body === 'object') {
+    config.body = JSON.stringify(config.body);
+  }
+  
+  try {
+    const res = await fetch(url, config);
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`API request failed: ${endpoint}`, error);
+    throw error;
+  }
+}
+
+// Auth APIs
+async function registerUser(formData) {
+  const data = await apiRequest('/auth/register', {
+    method: 'POST',
+    body: formData
+  });
+  authToken = data.token;
+  localStorage.setItem('token', authToken);
+  return data;
+}
+
+async function loginUserAPI(credentials) {
+  const data = await apiRequest('/auth/login', {
+    method: 'POST',
+    body: credentials
+  });
+  authToken = data.token;
+  localStorage.setItem('token', authToken);
+  return data;
+}
+
+async function googleAuthAPI(userData) {
+  const data = await apiRequest('/auth/google', {
+    method: 'POST',
+    body: userData
+  });
+  authToken = data.token;
+  localStorage.setItem('token', authToken);
+  return data;
+}
+
+// Product APIs
+async function fetchProducts() {
+  try {
+    const data = await apiRequest('/products');
+    return data;
+  } catch (err) {
+    console.warn('API fetch failed, using fallback:', err);
+    return FALLBACK;
+  }
+}
+
+// Cart APIs
+async function loadCart() {
+  if (!authToken) return [];
+  try {
+    const items = await apiRequest('/cart');
+    return items.map(item => ({
+      instanceId: item.instance_id,
+      product: {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        category: item.category,
+        color: item.color,
+        season: item.season,
+        image: item.image,
+        description: item.description
+      }
+    }));
+  } catch (err) {
+    console.warn('Failed to load cart:', err);
+    return [];
+  }
+}
+
+async function addToCart(productId) {
+  if (!authToken) {
+    // For users not logged in, fall back to in-memory storage
+    return null;
+  }
+  return apiRequest('/cart', {
+    method: 'POST',
+    body: { productId }
+  });
+}
+
+async function removeFromCart(instanceId) {
+  if (!authToken) return;
+  return apiRequest(`/cart/${instanceId}`, {
+    method: 'DELETE'
+  });
+}
+
+async function clearCart() {
+  if (!authToken) return;
+  return apiRequest('/cart', {
+    method: 'DELETE'
+  });
+}
+
+// Order APIs
+async function createOrder(orderData) {
+  return apiRequest('/orders', {
+    method: 'POST',
+    body: orderData
+  });
+}
 
 // ── Constants ──────────────────────────────────────────────
 const FREE_SHIPPING = 24;  // $24 USD (≈ ₹2000 INR)
@@ -163,7 +296,16 @@ function handleCredentialResponse(response) {
       picture: payload.picture,
       googleId: payload.sub
     };
-    loginUser(user);
+    
+    // Use the API to login via Google
+    googleAuthAPI(user).then(data => {
+      currentUser = data.user;
+      showApp();
+      toast(`Welcome, ${user.name.split(' ')[0]}! 👋`, 'success');
+    }).catch(err => {
+      toast('Failed to sign in with Google', 'error');
+      console.error('Google login error:', err);
+    });
   } catch (error) {
     console.error('Error processing Google OAuth response:', error);
     toast('Failed to sign in with Google', 'error');
@@ -224,17 +366,18 @@ function setupLogin() {
   });
 
   // Login form submit
-  dom.formLogin?.addEventListener('submit', (e) => {
+  dom.formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#li-email')?.value.trim();
     const pass  = $('#li-pass')?.value;
     if (!email || !pass) return;
 
-    const accounts = JSON.parse(localStorage.getItem('sw-accounts') || '[]');
-    const found = accounts.find(a => a.email === email && a.password === pass);
-    if (found) {
-      loginUser({ name: found.firstName + ' ' + found.lastName, email: found.email });
-    } else {
+    try {
+      const data = await loginUserAPI({ email, password: pass });
+      currentUser = data.user;
+      showApp();
+      toast(`Welcome, ${data.user.name.split(' ')[0]}! 👋`, 'success');
+    } catch (err) {
       toast('Invalid email or password', 'error');
       const passField = $('#li-pass');
       if (passField) passField.value = '';
@@ -242,7 +385,7 @@ function setupLogin() {
   });
 
   // Register form submit
-  dom.formRegister?.addEventListener('submit', (e) => {
+  dom.formRegister?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fname   = $('#reg-fname')?.value.trim();
     const lname   = $('#reg-lname')?.value.trim();
@@ -260,36 +403,47 @@ function setupLogin() {
       return;
     }
 
-    const accounts = JSON.parse(localStorage.getItem('sw-accounts') || '[]');
-    if (accounts.find(a => a.email === email)) {
-      toast('An account with this email already exists', 'error');
-      return;
+    try {
+      const data = await registerUser({
+        firstName: fname,
+        lastName: lname,
+        email,
+        phone,
+        country,
+        password: pass
+      });
+      currentUser = data.user;
+      showApp();
+      toast(`Account created! Welcome, ${fname} 🎉`, 'success');
+    } catch (err) {
+      toast('Registration failed', 'error');
     }
-
-    accounts.push({ firstName: fname, lastName: lname, email, phone, country, password: pass });
-    localStorage.setItem('sw-accounts', JSON.stringify(accounts));
-    toast(`Account created! Welcome, ${fname} 🎉`, 'success');
-    loginUser({ name: `${fname} ${lname}`, email });
   });
 
   // Logout
   dom.logoutBtn?.addEventListener('click', () => {
     currentUser = null;
+    authToken = null;
+    localStorage.removeItem('token');
     localStorage.removeItem('sw-current-user');
     bundle = [];
     showLoginPage();
     toast('Logged out successfully', 'info');
   });
 
-  // Auto-login if session saved
-  const saved = localStorage.getItem('sw-current-user');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
+  // Auto-login if token exists
+  const savedToken = localStorage.getItem('token');
+  if (savedToken) {
+    // Validate token by fetching user profile
+    apiRequest('/auth/me').then(data => {
+      currentUser = data.user;
       showApp();
-    } catch {
+      loadCartData();
+    }).catch(() => {
+      // Token invalid
+      localStorage.removeItem('token');
       showLoginPage();
-    }
+    });
   } else {
     showLoginPage();
   }
@@ -359,14 +513,75 @@ async function init() {
   setupMisc();
 }
 
-async function fetchProducts() {
-  try {
-    const res = await fetch('products.json');
-    if (!res.ok) throw new Error(res.statusText);
-    return await res.json();
-  } catch (e) {
-    console.warn('Fetch failed, using fallback:', e.message);
-    return FALLBACK;
+// ============================================================
+// CART MANAGEMENT (with Backend Sync)
+// ============================================================
+async function loadCartData() {
+  if (!authToken) return;
+  const cartData = await loadCart();
+  bundle = cartData;
+  instanceCounter = bundle.length > 0 ? Math.max(...bundle.map(b => b.instanceId)) : 0;
+  renderBundle();
+}
+
+async function addToBundle(productId) {
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) return;
+  
+  // Add to local UI
+  instanceCounter++;
+  bundle.push({ instanceId: instanceCounter, product });
+  renderBundle();
+  toast(`${product.name} added to your look ✓`, 'success');
+  
+  // Sync with backend if logged in
+  if (authToken) {
+    try {
+      await addToCart(productId);
+    } catch (err) {
+      console.error('Failed to sync cart:', err);
+    }
+  }
+  
+  // Scroll to bundle if on mobile
+  if (window.innerWidth <= 1100 && dom.bundleList) {
+    dom.bundleList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+async function removeFromBundle(instanceId) {
+  const idx = bundle.findIndex(i => i.instanceId === instanceId);
+  if (idx === -1) return;
+  const name = bundle[idx].product.name;
+  
+  // Remove from local UI
+  bundle.splice(idx, 1);
+  renderBundle();
+  toast(`${name} removed`, 'error');
+  
+  // Sync with backend if logged in
+  if (authToken) {
+    try {
+      await removeFromCart(instanceId);
+    } catch (err) {
+      console.error('Failed to remove from cart:', err);
+    }
+  }
+}
+
+async function clearBundle() {
+  // Clear local UI
+  bundle = [];
+  renderBundle();
+  toast('Bundle cleared', 'info');
+  
+  // Sync with backend if logged in
+  if (authToken) {
+    try {
+      await clearCart();
+    } catch (err) {
+      console.error('Failed to clear cart:', err);
+    }
   }
 }
 
@@ -684,36 +899,6 @@ function setupDragDrop() {
 }
 
 // ============================================================
-// BUNDLE MANAGEMENT
-// ============================================================
-function addToBundle(productId) {
-  const product = allProducts.find(p => p.id === productId);
-  if (!product) return;
-  instanceCounter++;
-  bundle.push({ instanceId: instanceCounter, product });
-  renderBundle();
-  toast(`${product.name} added to your look ✓`, 'success');
-  if (window.innerWidth <= 1100 && dom.bundleList) {
-    dom.bundleList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-}
-
-function removeFromBundle(instanceId) {
-  const idx = bundle.findIndex(i => i.instanceId === instanceId);
-  if (idx === -1) return;
-  const name = bundle[idx].product.name;
-  bundle.splice(idx, 1);
-  renderBundle();
-  toast(`${name} removed`, 'error');
-}
-
-function clearBundle() {
-  bundle = [];
-  renderBundle();
-  toast('Bundle cleared', 'info');
-}
-
-// ============================================================
 // QUICK VIEW DIALOG
 // ============================================================
 function openDialog(productId) {
@@ -777,7 +962,7 @@ function setupDialogListeners() {
 }
 
 // ============================================================
-// PAYMENT DIALOG
+// PAYMENT DIALOG (Backend Integrated)
 // ============================================================
 function setupPaymentDialog() {
   const btnUpi = $('#btn-upi');
@@ -812,17 +997,29 @@ function setupPaymentDialog() {
 
   // UPI Confirm
   const upiConfirm = $('#btn-upi-confirm');
-  upiConfirm?.addEventListener('click', () => {
-    dom.payDialog?.close();
-    const total = bundle.reduce((s, i) => s + i.product.price, 0);
-    const ship = total >= FREE_SHIPPING ? 0 : SHIPPING_COST;
-    toast(`🎉 UPI Payment confirmed! Order placed — ${convertPrice(total + ship)}`, 'success');
-    clearBundle();
+  upiConfirm?.addEventListener('click', async () => {
+    const subtotal = bundle.reduce((s, i) => s + i.product.price, 0);
+    const ship = subtotal >= FREE_SHIPPING ? 0 : SHIPPING_COST;
+    const total = subtotal + ship;
+    
+    try {
+      const orderData = {
+        paymentMethod: 'upi',
+        items: bundle.map(b => ({ productId: b.product.id, price: b.product.price }))
+      };
+      
+      await createOrder(orderData);
+      dom.payDialog?.close();
+      toast(`🎉 Order placed! UPI Payment confirmed — ${convertPrice(total)}`, 'success');
+      clearBundle();
+    } catch (err) {
+      toast('Failed to place order', 'error');
+    }
   });
 
   // COD form submit
   const codForm = $('#cod-form');
-  codForm?.addEventListener('submit', (e) => {
+  codForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const flat = $('#cod-flat')?.value.trim();
     const building = $('#cod-building')?.value.trim();
@@ -840,12 +1037,26 @@ function setupPaymentDialog() {
       return;
     }
 
-    dom.payDialog?.close();
-    const total = bundle.reduce((s, i) => s + i.product.price, 0);
-    const ship = total >= FREE_SHIPPING ? 0 : SHIPPING_COST;
-    toast(`📦 Order placed! COD — ${convertPrice(total + ship)}. Delivering to ${city}, ${state}`, 'success');
-    clearBundle();
-    codForm.reset();
+    const shippingAddress = { flat, building, area, city, pin, state };
+    const subtotal = bundle.reduce((s, i) => s + i.product.price, 0);
+    const ship = subtotal >= FREE_SHIPPING ? 0 : SHIPPING_COST;
+    const total = subtotal + ship;
+
+    try {
+      const orderData = {
+        paymentMethod: 'cod',
+        shippingAddress,
+        items: bundle.map(b => ({ productId: b.product.id, price: b.product.price }))
+      };
+      
+      await createOrder(orderData);
+      dom.payDialog?.close();
+      toast(`📦 Order placed! COD — ${convertPrice(total)}. Delivering to ${city}, ${state}`, 'success');
+      clearBundle();
+      codForm.reset();
+    } catch (err) {
+      toast('Failed to place order', 'error');
+    }
   });
 
   // Open payment dialog when CTA clicked
@@ -949,15 +1160,21 @@ function toast(message, type = 'info') {
 }
 
 // ============================================================
-// ERROR HANDLING
+// UTILITY FUNCTIONS
 // ============================================================
-window.addEventListener('error', (e) => {
-  console.error('JavaScript Error:', e.error);
-});
 
-window.addEventListener('unhandledrejection', (e) => {
-  console.error('Unhandled Promise Rejection:', e.reason);
-});
+// Debounce function for search
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 // ============================================================
 // START APPLICATION
@@ -977,104 +1194,3 @@ document.addEventListener('DOMContentLoaded', () => {
     toast('Failed to initialize application', 'error');
   });
 });
-
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
-
-// Format currency for display
-function formatCurrency(amount, currency = currentCurrency) {
-  const cfg = CURRENCY_RATES[currency];
-  if (!cfg) return `$${amount.toFixed(2)}`;
-  
-  const converted = amount * cfg.rate;
-  if (currency === 'JPY') return `${cfg.symbol}${Math.round(converted)}`;
-  if (currency === 'INR') return `${cfg.symbol}${Math.round(converted).toLocaleString('en-IN')}`;
-  return `${cfg.symbol}${converted.toFixed(2)}`;
-}
-
-// Debounce function for search
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Validate email format
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-// Generate unique ID
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-// Check if device is mobile
-function isMobile() {
-  return window.innerWidth <= 768;
-}
-
-// Smooth scroll to element
-function scrollToElement(element, offset = 0) {
-  if (!element) return;
-  const elementPosition = element.offsetTop - offset;
-  window.scrollTo({
-    top: elementPosition,
-    behavior: 'smooth'
-  });
-}
-
-// Get browser info
-function getBrowserInfo() {
-  const userAgent = navigator.userAgent;
-  let browserName = 'Unknown';
-  
-  if (userAgent.includes('Chrome')) browserName = 'Chrome';
-  else if (userAgent.includes('Firefox')) browserName = 'Firefox';
-  else if (userAgent.includes('Safari')) browserName = 'Safari';
-  else if (userAgent.includes('Edge')) browserName = 'Edge';
-  
-  return {
-    name: browserName,
-    userAgent: userAgent,
-    language: navigator.language,
-    platform: navigator.platform
-  };
-}
-
-// Export for debugging (if needed)
-if (typeof window !== 'undefined') {
-  window.ShoppingWebApp = {
-    // State
-    currentUser,
-    currentCurrency,
-    allProducts,
-    filtered,
-    bundle,
-    filters,
-    
-    // Functions
-    toast,
-    convertPrice,
-    addToBundle,
-    removeFromBundle,
-    clearBundle,
-    formatCurrency,
-    getBrowserInfo,
-    
-    // Version
-    version: '2.0.0'
-  };
-}
-
-// Console welcome message
-console.log('%c🛍️ Shopping Web App %cv2.0.0', 'color: #7c3aed; font-size: 16px; font-weight: bold;', 'color: #6b7280; font-size: 12px;');
-console.log('Professional shopping experience with real-time currency conversion, drag & drop, and Google OAuth integration.');
